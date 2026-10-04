@@ -39,13 +39,15 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
       ? error.status
       : 500;
 
-  console.error(error);
+  console.error("🔥 AUTH/SERVER ERROR:", error);
 
   res.status(statusCode).json({
     success: false,
     message:
       statusCode === 500
-        ? "Internal server error"
+        ? error instanceof Error
+          ? error.message
+          : "Internal server error"
         : error instanceof Error
           ? error.message
           : "Request failed",

@@ -1,10 +1,13 @@
 import { app } from "./app";
 import { env } from "./config/env";
 import { connectDB, disconnectDB } from "./config/db";
+import { startHearingReminderJob } from "./jobs/hearing-reminder.job";
 
 const startServer = async (): Promise<void> => {
   try {
     await connectDB();
+
+    startHearingReminderJob();
 
     const server = app.listen(env.PORT, () => {
       console.log(`🚀 Server running on http://localhost:${env.PORT}`);

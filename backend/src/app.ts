@@ -1,4 +1,5 @@
 import express from "express";
+import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import mongoSanitize from "express-mongo-sanitize";
 
@@ -20,6 +21,7 @@ app.use(corsMiddleware);
 app.use("/api", apiRateLimiter);
 
 app.use(express.json({ limit: "1mb" }));
+app.use(cookieParser());
 
 app.use(mongoSanitize());
 

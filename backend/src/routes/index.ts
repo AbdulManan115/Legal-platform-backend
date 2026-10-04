@@ -1,8 +1,30 @@
 import { Router } from "express";
 import healthRoutes from "./health.routes";
-
-const router = Router();
+import authRoutes from "./auth.routes";
+import advocateRoutes from "./advocate.routes";
+import publicAdvocateRoutes from "./advocates.public.routes";
+import favoriteRoutes from "./favorite.routes";
+import appointmentRoutes from "./appointment.routes";
+import slotRoutes from "./slot.routes";
+import clientRoutes from "./client.routes";
+import caseRoutes from "./case.routes";
+import caseHistoryRoutes from "./case-history.routes";
+import hearingRoutes from "./hearing.routes";
+import notificationRoutes from "./notification.routes";import caseDocumentRoutes from "./case-document.routes";
+import legalRoutes from "./legal.routes";
+import adminRoutes from "./admin.routes";const router = Router();
 
 router.use("/health", healthRoutes);
-
-export default router;
+router.use("/auth", authRoutes);
+router.use("/advocate", advocateRoutes);
+router.use("/advocates", publicAdvocateRoutes);
+router.use("/favorites", favoriteRoutes);
+router.use("/appointments", appointmentRoutes);
+router.use("/slots", slotRoutes);
+router.use("/clients", clientRoutes);
+router.use("/cases", caseRoutes);
+router.use("/case-history", caseHistoryRoutes);
+router.use("/hearings", hearingRoutes);
+router.use("/notifications", notificationRoutes);router.use("/case-documents", caseDocumentRoutes);
+router.use("/legal", legalRoutes);
+router.use("/admin", adminRoutes);export default router;
