@@ -11,6 +11,8 @@ import {
   getClient,
   getMyClients,
   updateClient,
+  getAppointmentCandidates,
+  addAppointmentClient,
 } from "../services/client.service";
 
 interface AuthenticatedRequest extends Request {
@@ -56,6 +58,43 @@ export const create = async (
   res.status(201).json({
     success: true,
     message: "Client created successfully",
+    data: { client },
+  });
+};
+
+export const appointmentCandidates = async (
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> => {
+  const clients = await getAppointmentCandidates(getUserId(req));
+
+  res.status(200).json({
+    success: true,
+    data: { clients },
+  });
+};
+
+export const addFromAppointment = async (
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> => {
+  const appointmentId = req.params.appointmentId;
+
+  if (
+    typeof appointmentId !== "string" ||
+    !/^[0-9a-fA-F]{24}$/.test(appointmentId)
+  ) {
+    throw new AppError(400, "Invalid appointment ID");
+  }
+
+  const client = await addAppointmentClient(
+    getUserId(req),
+    appointmentId,
+  );
+
+  res.status(201).json({
+    success: true,
+    message: "Client added to My Clients successfully",
     data: { client },
   });
 };

@@ -1,3 +1,4 @@
+import { updateAdvocateRating } from "./review.service.js";
 import { User } from "../models/User";
 import { AdvocateProfile } from "../models/AdvocateProfile";
 import { Appointment } from "../models/Appointment";
@@ -97,7 +98,22 @@ export const listUsers = async (
 export const updateUserStatus = async (
   userId: string,
   status: "active" | "suspended",
+  actingAdminId?: string,
 ) => {
+  const targetUser = await User.findById(userId);
+
+  if (!targetUser) {
+    throw new AppError(404, "User not found");
+  }
+
+  if (targetUser.role === "admin" && status === "suspended") {
+    throw new AppError(403, "Admin accounts cannot be suspended");
+  }
+
+  if (actingAdminId && targetUser._id.toString() === actingAdminId) {
+    throw new AppError(403, "You cannot change your own account status");
+  }
+
   const user = await User.findByIdAndUpdate(
     userId,
     { $set: { status } },
@@ -116,7 +132,22 @@ export const updateUserStatus = async (
 export const updateUserRole = async (
   userId: string,
   role: "client" | "advocate" | "admin",
+  actingAdminId?: string,
 ) => {
+  const targetUser = await User.findById(userId);
+
+  if (!targetUser) {
+    throw new AppError(404, "User not found");
+  }
+
+  if (targetUser.role === "admin" || role === "admin") {
+    throw new AppError(403, "Admin account roles cannot be changed");
+  }
+
+  if (actingAdminId && targetUser._id.toString() === actingAdminId) {
+    throw new AppError(403, "You cannot change your own account role");
+  }
+
   const user = await User.findByIdAndUpdate(
     userId,
     { $set: { role } },
@@ -224,6 +255,8 @@ export const updateReviewModeration = async (
   if (!review) {
     throw new AppError(404, "Review not found");
   }
+
+  await updateAdvocateRating(review.advocate);
 
   return review;
 };

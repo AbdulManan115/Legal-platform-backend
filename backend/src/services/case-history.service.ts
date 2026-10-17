@@ -2,7 +2,10 @@ import { AdvocateProfile } from "../models/AdvocateProfile";
 import { Case } from "../models/Case";
 import { CaseHistory } from "../models/CaseHistory";
 import { AppError } from "../utils/AppError";
-import type { CreateCaseHistoryInput } from "../validators/case-history.validators";
+import type {
+  CreateCaseHistoryInput,
+  UpdateCaseHistoryInput,
+} from "../validators/case-history.validators";
 
 const getAdvocate = async (userId: string) => {
   const advocate = await AdvocateProfile.findOne({
@@ -73,4 +76,52 @@ export const getCaseHistory = async (
       select: "name role",
     })
     .lean();
+};
+
+
+export const updateCaseHistory = async (
+  userId: string,
+  historyId: string,
+  input: UpdateCaseHistoryInput,
+) => {
+  const advocate = await getAdvocate(userId);
+
+  const history = await CaseHistory.findOne({
+    _id: historyId,
+    advocate: advocate._id,
+  });
+
+  if (!history) {
+    throw new AppError(404, "History entry not found");
+  }
+
+  history.type = input.type;
+  history.message = input.message;
+
+  await history.save();
+
+  return history.populate({
+    path: "createdBy",
+    select: "name role",
+  });
+};
+
+export const deleteCaseHistory = async (
+  userId: string,
+  historyId: string,
+) => {
+  const advocate = await getAdvocate(userId);
+
+  const history = await CaseHistory.findOne({
+    _id: historyId,
+    advocate: advocate._id,
+  });
+
+  if (!history) {
+    throw new AppError(404, "History entry not found");
+  }
+
+  await history.deleteOne();
+
+  return history;
 };

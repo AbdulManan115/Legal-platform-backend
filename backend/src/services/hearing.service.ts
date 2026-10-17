@@ -2,6 +2,7 @@ import { AdvocateProfile } from "../models/AdvocateProfile";
 import { Case } from "../models/Case";
 import { Hearing } from "../models/Hearing";
 import { AppError } from "../utils/AppError";
+import { createNotification } from "./notification.service";
 import type {
   CreateHearingInput,
   UpdateHearingInput,
@@ -26,7 +27,12 @@ const getOwnedCase = async (
   const legalCase = await Case.findOne({
     _id: caseId,
     advocate: advocateId,
-  }).select("_id");
+  })
+    .select("_id caseCode client")
+    .populate({
+      path: "client",
+      select: "linkedUser name",
+    });
 
   if (!legalCase) {
     throw new AppError(404, "Case not found");
@@ -41,12 +47,12 @@ export const createHearing = async (
 ) => {
   const advocate = await getAdvocate(userId);
 
-  await getOwnedCase(
+  const legalCase = await getOwnedCase(
     advocate._id.toString(),
     input.caseId,
   );
 
-  return Hearing.create({
+  const hearing = await Hearing.create({
     case: input.caseId,
     advocate: advocate._id,
     court: input.court,
@@ -55,6 +61,28 @@ export const createHearing = async (
     notes: input.notes,
     status: input.status,
   });
+
+  const client = legalCase.client as unknown as {
+    linkedUser?: import("mongoose").Types.ObjectId;
+  } | null;
+
+  if (client?.linkedUser) {
+    const hearingDate = new Date(input.dateTime).toLocaleString("en-PK", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "Asia/Karachi",
+    });
+
+    await createNotification({
+      userId: client.linkedUser,
+      type: "case_update",
+      title: "New Hearing Scheduled",
+      message: `A new hearing has been scheduled for your case ${legalCase.caseCode} on ${hearingDate}.`,
+      link: `/client/cases/${input.caseId}`,
+    });
+  }
+
+  return hearing;
 };
 
 export const getCaseHearings = async (
@@ -121,6 +149,31 @@ export const updateHearing = async (
   if (input.status !== undefined) hearing.status = input.status;
 
   await hearing.save();
+
+  const legalCase = await getOwnedCase(
+    advocate._id.toString(),
+    hearing.case.toString(),
+  );
+
+  const client = legalCase.client as unknown as {
+    linkedUser?: import("mongoose").Types.ObjectId;
+  } | null;
+
+  if (client?.linkedUser) {
+    const hearingDate = new Date(hearing.dateTime).toLocaleString("en-PK", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "Asia/Karachi",
+    });
+
+    await createNotification({
+      userId: client.linkedUser,
+      type: "case_update",
+      title: "Hearing Updated",
+      message: `The hearing for your case ${legalCase.caseCode} has been updated to ${hearingDate}.`,
+      link: `/client/cases/${hearing.case.toString()}`,
+    });
+  }
 
   return hearing;
 };

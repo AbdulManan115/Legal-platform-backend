@@ -2,6 +2,7 @@ import { AdvocateProfile } from "../models/AdvocateProfile";
 import { Appointment } from "../models/Appointment";
 import { AppError } from "../utils/AppError";
 import type { CreateAppointmentInput } from "../validators/appointment.validators";
+import { createNotification } from "./notification.service.js";
 
 export const createAppointment = async (
   clientId: string,
@@ -73,6 +74,14 @@ export const createAppointment = async (
     endAt: input.endAt,
     issueDescription: input.issueDescription,
     status: "pending",
+  });
+
+  await createNotification({
+    userId: advocate.user,
+    type: "appointment",
+    title: "New appointment request",
+    message: "You have received a new appointment request from a client.",
+    link: "/advocate/appointments",
   });
 
   return appointment;
@@ -173,6 +182,14 @@ export const confirmAppointment = async (
   appointment.status = "confirmed";
   await appointment.save();
 
+  await createNotification({
+    userId: appointment.client,
+    type: "appointment",
+    title: "Appointment confirmed",
+    message: "Your appointment request has been confirmed by the advocate.",
+    link: "/client/appointments",
+  });
+
   return appointment;
 };
 
@@ -199,6 +216,16 @@ export const rejectAppointment = async (
 
   await appointment.save();
 
+  await createNotification({
+    userId: appointment.client,
+    type: "appointment",
+    title: "Appointment rejected",
+    message: appointment.rejectionReason
+      ? `Your appointment request was rejected. Reason: ${appointment.rejectionReason}`
+      : "Your appointment request was rejected by the advocate.",
+    link: "/client/appointments",
+  });
+
   return appointment;
 };
 
@@ -220,6 +247,14 @@ export const completeAppointment = async (
 
   appointment.status = "completed";
   await appointment.save();
+
+  await createNotification({
+    userId: appointment.client,
+    type: "appointment",
+    title: "Appointment completed",
+    message: "Your appointment has been marked as completed.",
+    link: `/client/appointments/${appointment._id.toString()}`,
+  });
 
   return appointment;
 };
@@ -273,6 +308,30 @@ export const cancelAppointment = async (
   }
 
   await appointment.save();
+
+  if (isClient) {
+    const advocateProfile = await AdvocateProfile.findById(
+      appointment.advocate,
+    ).select("user");
+
+    if (advocateProfile) {
+      await createNotification({
+        userId: advocateProfile.user,
+        type: "appointment",
+        title: "Appointment cancelled",
+        message: "A client has cancelled an appointment.",
+        link: "/advocate/appointments",
+      });
+    }
+  } else if (isAdvocate) {
+    await createNotification({
+      userId: appointment.client,
+      type: "appointment",
+      title: "Appointment cancelled",
+      message: "The advocate has cancelled your appointment.",
+      link: "/client/appointments",
+    });
+  }
 
   return appointment;
 };

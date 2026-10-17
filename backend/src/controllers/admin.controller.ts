@@ -97,6 +97,7 @@ export const changeUserStatus = async (
   const user = await updateUserStatus(
     params.data.userId,
     body.data.status,
+    req.user?.userId,
   );
 
   res.status(200).json({
@@ -127,6 +128,7 @@ export const changeUserRole = async (
   const user = await updateUserRole(
     params.data.userId,
     body.data.role,
+    req.user?.userId,
   );
 
   res.status(200).json({

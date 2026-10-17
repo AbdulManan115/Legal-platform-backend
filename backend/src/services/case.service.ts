@@ -1,6 +1,7 @@
 import { AdvocateClient } from "../models/AdvocateClient";
 import { AdvocateProfile } from "../models/AdvocateProfile";
 import { Case } from "../models/Case";
+import { Hearing } from "../models/Hearing";
 import { AppError } from "../utils/AppError";
 import type {
   CreateCaseInput,
@@ -114,6 +115,33 @@ export const getMyCases = async (
     .lean();
 };
 
+export const getCasesForClient = async (
+  userId: string,
+  clientId: string,
+) => {
+  const advocate = await getAdvocateProfile(userId);
+
+  const client = await AdvocateClient.findOne({
+    _id: clientId,
+    advocate: advocate._id,
+  }).select("_id");
+
+  if (!client) {
+    throw new AppError(404, "Client not found");
+  }
+
+  return Case.find({
+    advocate: advocate._id,
+    client: client._id,
+  })
+    .sort({ createdAt: -1 })
+    .populate({
+      path: "client",
+      select: "name phone email address",
+    })
+    .lean();
+};
+
 export const getCase = async (
   userId: string,
   caseId: string,
@@ -217,4 +245,76 @@ export const deleteCase = async (
   }
 
   return legalCase;
+};
+
+
+export const getMyClientCaseDetails = async (
+  userId: string,
+  caseId: string,
+) => {
+  const client = await AdvocateClient.findOne({
+    linkedUser: userId,
+  }).select("_id name");
+
+  if (!client) {
+    throw new AppError(404, "Client profile not linked");
+  }
+
+  const legalCase = await Case.findOne({
+    _id: caseId,
+    client: client._id,
+  })
+    .select(
+      "_id caseCode caseNumber title caseType court judge oppositeParty description filingDate status",
+    )
+    .populate({
+      path: "client",
+      select: "name",
+    })
+    .lean();
+
+  if (!legalCase) {
+    throw new AppError(404, "Case not found");
+  }
+
+  const nextHearing = await Hearing.findOne({
+    case: legalCase._id,
+    status: "scheduled",
+    dateTime: { $gte: new Date() },
+  })
+    .sort({ dateTime: 1 })
+    .select("_id court judge dateTime status")
+    .lean();
+
+  return {
+    ...legalCase,
+    nextHearing: nextHearing ?? null,
+  };
+};
+
+export const getMyClientCases = async (userId: string) => {
+  const cases = await Case.find()
+    .populate({
+      path: "client",
+      match: { linkedUser: userId },
+      select: "name",
+    })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return cases
+    .filter((legalCase) => legalCase.client)
+    .map((legalCase) => ({
+      _id: legalCase._id,
+      caseCode: legalCase.caseCode,
+      caseNumber: legalCase.caseNumber,
+      title: legalCase.title,
+      caseType: legalCase.caseType,
+      court: legalCase.court,
+      judge: legalCase.judge,
+      oppositeParty: legalCase.oppositeParty,
+      filingDate: legalCase.filingDate,
+      status: legalCase.status,
+      client: legalCase.client,
+    }));
 };

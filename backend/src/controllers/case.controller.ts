@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { getMyClientCaseDetails, getMyClientCases, getCasesForClient } from "../services/case.service";
 import { AppError } from "../utils/AppError";
 import {
   caseIdSchema,
@@ -63,6 +64,55 @@ export const create = async (
     success: true,
     message: "Case created successfully",
     data: { case: legalCase },
+  });
+};
+
+export const clientMine = async (
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> => {
+  const cases = await getMyClientCases(getUserId(req));
+
+  res.status(200).json({
+    success: true,
+    data: { cases },
+  });
+};
+
+
+export const clientGetOne = async (
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> => {
+  const legalCase = await getMyClientCaseDetails(
+    getUserId(req),
+    getCaseId(req),
+  );
+
+  res.status(200).json({
+    success: true,
+    data: { case: legalCase },
+  });
+};
+
+export const forClient = async (
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> => {
+  const clientId = req.params.clientId;
+
+  if (!clientId || !/^[0-9a-fA-F]{24}$/.test(clientId)) {
+    throw new AppError(400, "Invalid client ID");
+  }
+
+  const cases = await getCasesForClient(
+    getUserId(req),
+    clientId,
+  );
+
+  res.status(200).json({
+    success: true,
+    data: { cases },
   });
 };
 

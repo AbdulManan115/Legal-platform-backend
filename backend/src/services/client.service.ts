@@ -1,4 +1,5 @@
 import { AdvocateClient } from "../models/AdvocateClient";
+import { Appointment } from "../models/Appointment";
 import { AdvocateProfile } from "../models/AdvocateProfile";
 import { AppError } from "../utils/AppError";
 import type {
@@ -43,6 +44,121 @@ export const createClient = async (
     email: input.email?.toLowerCase(),
     address: input.address,
     notes: input.notes,
+  });
+};
+
+export const getAppointmentCandidates = async (userId: string) => {
+  const advocate = await getAdvocateProfile(userId);
+
+  const appointments = await Appointment.find({
+    advocate: advocate._id,
+    status: { $in: ["confirmed", "completed"] },
+  })
+    .sort({ startAt: -1 })
+    .populate({
+      path: "client",
+      select: "name email phone",
+    })
+    .lean();
+
+  const existingClients = await AdvocateClient.find({
+    advocate: advocate._id,
+    linkedUser: { $exists: true, $ne: null },
+  })
+    .select("linkedUser")
+    .lean();
+
+  const existingUserIds = new Set(
+    existingClients
+      .map((client) => client.linkedUser?.toString())
+      .filter(Boolean),
+  );
+
+  const seen = new Set<string>();
+
+  return appointments
+    .filter((appointment) => {
+      const client = appointment.client as {
+        _id?: unknown;
+        name?: string;
+        email?: string;
+        phone?: string;
+      } | null;
+
+      if (!client?._id) return false;
+
+      const userId = client._id.toString();
+
+      if (existingUserIds.has(userId)) return false;
+      if (seen.has(userId)) return false;
+
+      seen.add(userId);
+      return true;
+    })
+    .map((appointment) => ({
+      appointmentId: appointment._id,
+      client: appointment.client,
+      appointmentDate: appointment.startAt,
+    }));
+};
+
+export const addAppointmentClient = async (
+  userId: string,
+  appointmentId: string,
+) => {
+  const advocate = await getAdvocateProfile(userId);
+
+  const appointment = await Appointment.findOne({
+    _id: appointmentId,
+    advocate: advocate._id,
+    status: { $in: ["confirmed", "completed"] },
+  }).populate({
+    path: "client",
+    select: "name email phone",
+  });
+
+  if (!appointment) {
+    throw new AppError(404, "Appointment client not found");
+  }
+
+  const clientUser = appointment.client as unknown as {
+    _id: import("mongoose").Types.ObjectId;
+    name: string;
+    email?: string;
+    phone?: string;
+  };
+
+  const existingClient = await AdvocateClient.findOne({
+    advocate: advocate._id,
+    linkedUser: clientUser._id,
+  });
+
+  if (existingClient) {
+    return existingClient;
+  }
+
+  const existingByPhone = clientUser.phone
+    ? await AdvocateClient.findOne({
+        advocate: advocate._id,
+        phone: clientUser.phone,
+      })
+    : null;
+
+  if (existingByPhone) {
+    existingByPhone.linkedUser = clientUser._id;
+    if (!existingByPhone.email && clientUser.email) {
+      existingByPhone.email = clientUser.email.toLowerCase();
+    }
+    await existingByPhone.save();
+    return existingByPhone;
+  }
+
+  return AdvocateClient.create({
+    advocate: advocate._id,
+    linkedUser: clientUser._id,
+    name: clientUser.name,
+    phone: clientUser.phone || "N/A",
+    email: clientUser.email?.toLowerCase(),
   });
 };
 

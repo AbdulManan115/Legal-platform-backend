@@ -1,16 +1,20 @@
 import rateLimit from "express-rate-limit";
-import { env } from "../config/env";
+
+const isProduction = process.env.NODE_ENV === "production";
 
 export const apiRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: env.RATE_LIMIT_MAX,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
 
-  skip: (req) => req.path === "/health",
+  // Development mein high limit, production mein proper protection
+  max: isProduction ? 300 : 5000,
+
+  standardHeaders: true,
+  legacyHeaders: false,
 
   message: {
     success: false,
-    message: "Too many requests. Please try again later.",
+    message: "Too many requests, please try again later.",
   },
+
+  skip: () => !isProduction,
 });

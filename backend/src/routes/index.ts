@@ -12,7 +12,8 @@ import caseHistoryRoutes from "./case-history.routes";
 import hearingRoutes from "./hearing.routes";
 import notificationRoutes from "./notification.routes";import caseDocumentRoutes from "./case-document.routes";
 import legalRoutes from "./legal.routes";
-import adminRoutes from "./admin.routes";const router = Router();
+import adminRoutes from "./admin.routes";
+import reviewRoutes from "./review.routes.js";const router = Router();
 
 router.use("/health", healthRoutes);
 router.use("/auth", authRoutes);
@@ -28,3 +29,5 @@ router.use("/hearings", hearingRoutes);
 router.use("/notifications", notificationRoutes);router.use("/case-documents", caseDocumentRoutes);
 router.use("/legal", legalRoutes);
 router.use("/admin", adminRoutes);export default router;
+
+router.use("/reviews", reviewRoutes);

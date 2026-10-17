@@ -8,6 +8,8 @@ import {
   getOne,
   update,
   remove,
+  appointmentCandidates,
+  addFromAppointment,
 } from "../controllers/client.controller";
 
 const router = Router();
@@ -16,6 +18,14 @@ router.use(requireAuth, requireRole("advocate"));
 
 router.post("/", asyncHandler(create));
 router.get("/mine", asyncHandler(mine));
+router.get(
+  "/appointment-candidates",
+  asyncHandler(appointmentCandidates),
+);
+router.post(
+  "/from-appointment/:appointmentId",
+  asyncHandler(addFromAppointment),
+);
 router.get("/:clientId", asyncHandler(getOne));
 router.patch("/:clientId", asyncHandler(update));
 router.delete("/:clientId", asyncHandler(remove));

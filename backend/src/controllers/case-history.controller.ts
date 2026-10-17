@@ -2,11 +2,15 @@ import type { Request, Response } from "express";
 import { AppError } from "../utils/AppError";
 import {
   caseHistoryCaseIdSchema,
+  caseHistoryIdSchema,
   createCaseHistorySchema,
+  updateCaseHistorySchema,
 } from "../validators/case-history.validators";
 import {
   addCaseHistory,
+  deleteCaseHistory,
   getCaseHistory,
+  updateCaseHistory,
 } from "../services/case-history.service";
 
 interface AuthenticatedRequest extends Request {
@@ -68,5 +72,60 @@ export const mine = async (
   res.status(200).json({
     success: true,
     data: { history },
+  });
+};
+
+
+export const update = async (
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> => {
+  const idResult = caseHistoryIdSchema.safeParse(req.params);
+
+  if (!idResult.success) {
+    throw new AppError(400, "Invalid history ID");
+  }
+
+  const bodyResult = updateCaseHistorySchema.safeParse(req.body);
+
+  if (!bodyResult.success) {
+    throw new AppError(
+      400,
+      "Validation failed",
+      bodyResult.error.issues,
+    );
+  }
+
+  const history = await updateCaseHistory(
+    getUserId(req),
+    idResult.data.historyId,
+    bodyResult.data,
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Case history updated successfully",
+    data: { history },
+  });
+};
+
+export const remove = async (
+  req: AuthenticatedRequest,
+  res: Response,
+): Promise<void> => {
+  const result = caseHistoryIdSchema.safeParse(req.params);
+
+  if (!result.success) {
+    throw new AppError(400, "Invalid history ID");
+  }
+
+  await deleteCaseHistory(
+    getUserId(req),
+    result.data.historyId,
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Case history deleted successfully",
   });
 };

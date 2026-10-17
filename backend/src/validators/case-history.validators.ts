@@ -24,6 +24,29 @@ export const caseHistoryCaseIdSchema = z.object({
   caseId: objectId,
 });
 
+export const updateCaseHistorySchema = z.object({
+  type: z
+    .enum([
+      "created",
+      "updated",
+      "status_changed",
+      "note_added",
+      "hearing_updated",
+      "document_added",
+      "custom",
+    ])
+    .default("custom"),
+  message: z.string().trim().min(2).max(2000),
+});
+
+export const caseHistoryIdSchema = z.object({
+  historyId: objectId,
+});
+
 export type CreateCaseHistoryInput = z.infer<
   typeof createCaseHistorySchema
+>;
+
+export type UpdateCaseHistoryInput = z.infer<
+  typeof updateCaseHistorySchema
 >;
